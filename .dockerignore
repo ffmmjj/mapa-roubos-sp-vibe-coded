@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Git
+.git/
+.gitignore
+
+# SQLite (será descomprimido no build)
+*.db
+*.db-shm
+*.db-wal
+!crimes.db.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+._*
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentação
+README.md
+COMO_ADICIONAR_DADOS.md
+GEOCODING.md
+
+# Scripts de setup
+setup.sh
+start.sh
+
+# Arquivos de dados não usados
+*.backup.db
+*.before_*.db

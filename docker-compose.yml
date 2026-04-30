@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: mapa-crimes
+    ports:
+      - "8000:8000"
+    # Volumes para desenvolvimento (opcional)
+    # volumes:
+    #   - ./backend:/app/backend
+    #   - ./frontend:/app/frontend
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Serviço opcional para importação de novos dados
+  importer:
+    build: .
+    container_name: mapa-crimes-importer
+    volumes:
+      - ./backend:/app/backend
+      - ./CelularesSubtraidos_*.xlsx:/data/CelularesSubtraidos.xlsx
+    profiles:
+      - importer

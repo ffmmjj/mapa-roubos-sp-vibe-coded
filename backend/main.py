@@ -6,8 +6,17 @@ import sqlite3
 import os
 from typing import Optional
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "crimes.db")
-FRONTEND_PATH = os.path.join(os.path.dirname(__file__), "..", "frontend")
+# Detectar se está rodando no Docker
+IN_DOCKER = os.path.exists('/app/frontend')
+
+if IN_DOCKER:
+    # No Docker, os arquivos estão em /app
+    DB_PATH = "/app/crimes.db"
+    FRONTEND_PATH = "/app/frontend"
+else:
+    # No host local, paths relativos
+    DB_PATH = os.path.join(os.path.dirname(__file__), "crimes.db")
+    FRONTEND_PATH = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
 app = FastAPI(title="Mapa de Roubos de Celulares - SP 2025")
 
