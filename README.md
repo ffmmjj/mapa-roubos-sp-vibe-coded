@@ -1,13 +1,14 @@
 # Mapa de Crimes - Roubo de Celulares (São Paulo)
 
-Dashboard interativo para visualização de dados de roubo de celulares no estado de São Paulo, com filtros por ano, cidade, bairro, período e seleção de área no mapa.
+Dashboard interativo para visualização de dados de roubo de celulares no estado de São Paulo, com filtros por ano, cidade, bairro, período e seleção de área no mapa. 
+
+Inspirado pelo mapa disponibilizado em https://infograficos.oglobo.globo.com/brasil/mapa-do-crime-sp.html, porém feito apenas via vibecoding simplificando alguns aspectos mas melhorando outros, como permitir seleção de áreas retangulares arbitrárias para exibição de estatísticas e de logradouros críticos das regiões selecionadas.
+
 
 ## 📊 Dados
 
 - **Período**: 2023 a 2025
-- **Total de roubos**: 507.159
-- **Com coordenadas**: 498.001 (98,2%)
-- **Municípios**: Vários do estado de São Paulo
+- **Fonte**: Microdados da SSP-SP: https://www.ssp.sp.gov.br/estatistica/consultas
 
 ## ✨ Funcionalidades
 
