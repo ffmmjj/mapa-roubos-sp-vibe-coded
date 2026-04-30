@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roubos de Celulares - SP 2025</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+        #map { width: 100%; height: 100vh; }
+
+        /* Sidebar */
+        #sidebar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+            width: 330px;
+            max-height: calc(100vh - 20px);
+            overflow-y: auto;
+            transition: transform 0.3s;
+        }
+        #sidebar.collapsed { transform: translateX(-350px); }
+
+        #toggle-btn {
+            position: absolute;
+            top: 10px;
+            z-index: 1001;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+            font-size: 18px;
+            transition: left 0.3s;
+        }
+        #toggle-btn.open { left: 350px; }
+        #toggle-btn.closed { left: 10px; }
+
+        .sidebar-header {
+            padding: 16px 18px 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .sidebar-header h1 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        .sidebar-header p {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .sidebar-section {
+            padding: 12px 18px;
+            border-bottom: 1px solid #eee;
+        }
+        .sidebar-section h3 {
+            font-size: 11px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .filter-group { margin-bottom: 8px; }
+        .filter-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 3px;
+        }
+        .filter-group select, .filter-group input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+        }
+
+        .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+        .btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary { background: #ef476f; color: white; }
+        .btn-primary:hover { background: #d63d60; }
+        .btn-secondary { background: #f0f0f0; color: #555; }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .btn-select {
+            background: #4361ee; color: white;
+            position: relative;
+        }
+        .btn-select:hover { background: #3a56d4; }
+        .btn-select.active {
+            background: #d90429;
+            animation: pulse-select 1.5s infinite;
+        }
+        @keyframes pulse-select {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(217,4,41,0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(217,4,41,0); }
+        }
+        .btn-clear-sel {
+            background: #f0f0f0; color: #555; flex: 0.6;
+        }
+        .btn-clear-sel:hover { background: #e0e0e0; }
+
+        /* Stats */
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+        }
+        .stat-card .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        .stat-card .stat-label {
+            font-size: 11px;
+            color: #888;
+        }
+        .stat-row { display: flex; gap: 8px; }
+        .stat-row .stat-card { flex: 1; }
+
+        .bar-chart { margin-top: 6px; }
+        .bar-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+        .bar-label {
+            width: 110px;
+            text-align: right;
+            padding-right: 8px;
+            color: #555;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bar-track {
+            flex: 1;
+            background: #eee;
+            border-radius: 3px;
+            height: 14px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+        .bar-count {
+            width: 50px;
+            text-align: right;
+            padding-left: 6px;
+            color: #888;
+            font-size: 10px;
+        }
+
+        /* Area stats panel */
+        #area-stats {
+            display: none;
+        }
+        #area-stats.visible { display: block; }
+
+        .area-stats-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .area-stats-header .badge {
+            background: #d90429;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+        }
+
+        .hotspot-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 11px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .hotspot-rank {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #d90429;
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .hotspot-info { flex: 1; min-width: 0; }
+        .hotspot-rua {
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .hotspot-count { color: #888; font-size: 10px; }
+
+        /* Legend */
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Loading */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            text-align: center;
+            display: none;
+        }
+        #loading.show { display: block; }
+        .spinner {
+            width: 30px; height: 30px;
+            border: 3px solid #eee;
+            border-top-color: #ef476f;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Bottom info bar */
+        #map-info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(26,26,46,0.85);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+        }
+
+        /* View toggle */
+        .view-toggle {
+            display: flex;
+            background: #f0f0f0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .view-toggle button {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            background: none;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .view-toggle button.active {
+            background: #ef476f;
+            color: white;
+        }
+
+        /* MarkerCluster custom styles */
+        .marker-cluster-small { background-color: rgba(239, 71, 111, 0.3); }
+        .marker-cluster-small div { background-color: rgba(239, 71, 111, 0.7); color: white; }
+        .marker-cluster-medium { background-color: rgba(239, 71, 111, 0.5); }
+        .marker-cluster-medium div { background-color: rgba(217, 4, 41, 0.7); color: white; }
+        .marker-cluster-large { background-color: rgba(217, 4, 41, 0.4); }
+        .marker-cluster-large div { background-color: rgba(217, 4, 41, 0.8); color: white; }
+
+        /* Popup */
+        .leaflet-popup-content { font-size: 13px; line-height: 1.5; }
+        .popup-field { margin: 2px 0; }
+        .popup-field strong { color: #ef476f; }
+
+        /* Scrollbar */
+        #sidebar::-webkit-scrollbar { width: 6px; }
+        #sidebar::-webkit-scrollbar-track { background: transparent; }
+        #sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+        /* Selection rectangle */
+        .selection-rect {
+            stroke: #d90429;
+            stroke-width: 2;
+            stroke-dasharray: 8 4;
+            fill: rgba(217, 4, 41, 0.08);
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<button id="toggle-btn" class="open" onclick="toggleSidebar()">☰</button>
+
+<div id="sidebar">
+    <div class="sidebar-header">
+        <h1>📱 Roubos de Celulares - SP 2025</h1>
+        <p>Dados de roubos de celulares no estado de São Paulo</p>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="view-toggle">
+            <button id="btn-markers" class="active" onclick="setView('markers')">🔵 Marcadores</button>
+            <button id="btn-heatmap" onclick="setView('heatmap')">🔥 Mapa de Calor</button>
+        </div>
+        <div class="btn-row">
+            <button id="btn-select" class="btn btn-select" onclick="toggleSelectMode()">✋ Selecionar Área</button>
+            <button id="btn-clear-sel" class="btn btn-clear-sel" onclick="clearSelection()" style="display:none">✕ Limpar</button>
+        </div>
+    </div>
+
+    <div class="sidebar-section">
+        <h3>Filtros</h3>
+        <div class="filter-group">
+            <label>Cidade</label>
+            <select id="filter-cidade" onchange="loadBairros()">
+                <option value="">Todas</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Bairro</label>
+            <select id="filter-bairro">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Período do Dia</label>
+            <select id="filter-periodo">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Ano</label>
+            <select id="filter-ano" onchange="updateDatesForYear()">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Data Início</label>
+            <input type="date" id="filter-data-inicio" value="2023-01-01">
+        </div>
+        <div class="filter-group">
+            <label>Data Fim</label>
+            <input type="date" id="filter-data-fim" value="2025-12-31">
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-primary" onclick="applyFilters()">Aplicar</button>
+            <button class="btn btn-secondary" onclick="clearFilters()">Limpar</button>
+        </div>
+    </div>
+
+    <!-- General stats (shown when no selection) -->
+    <div id="general-stats" class="sidebar-section">
+        <h3>Estatísticas Gerais</h3>
+        <div class="stat-row">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-total">-</div>
+                <div class="stat-label">Total roubos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-visible">-</div>
+                <div class="stat-label">Na área visível</div>
+            </div>
+        </div>
+        <div class="bar-chart" id="chart-cidade"></div>
+        <div class="bar-chart" id="chart-periodo" style="margin-top:12px;"></div>
+        <div class="bar-chart" id="chart-tipolocal" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- Area stats (shown when selection is active) -->
+    <div id="area-stats" class="sidebar-section">
+        <div class="area-stats-header">
+            <h3 style="margin:0">📊 Estatísticas da Área</h3>
+            <span class="badge">Seleção</span>
+        </div>
+        <div class="stat-row" style="margin-top:8px">
+            <div class="stat-card" style="background:#fff0f3">
+                <div class="stat-value" style="color:#d90429" id="area-stat-total">-</div>
+                <div class="stat-label">Roubos na área</div>
+            </div>
+            <div class="stat-card" style="background:#f0f7ff">
+                <div class="stat-value" style="color:#4361ee" id="area-stat-flagrante">-</div>
+                <div class="stat-label">Com flagrante</div>
+            </div>
+        </div>
+        <div class="bar-chart" id="area-chart-periodo"></div>
+        <div class="bar-chart" id="area-chart-month" style="margin-top:12px;"></div>
+        <div class="bar-chart" id="area-chart-tipolocal" style="margin-top:12px;"></div>
+        <div class="bar-chart" id="area-chart-marca" style="margin-top:12px;"></div>
+        <div class="bar-chart" id="area-chart-bairro" style="margin-top:12px;"></div>
+
+        <!-- Hotspots -->
+        <h3 style="margin-top:12px">🔥 Pontos Mais Críticos</h3>
+        <div id="area-hotspots"></div>
+    </div>
+
+    <div class="sidebar-section">
+        <h3>Legenda</h3>
+        <div class="legend-item">
+            <div class="legend-dot" style="background: #ef476f;"></div>
+            <span>Roubo de celular</span>
+        </div>
+        <div class="legend-item" style="margin-top:4px">
+            <div class="legend-dot" style="background: transparent; border: 2px dashed #d90429;"></div>
+            <span>Área selecionada</span>
+        </div>
+    </div>
+</div>
+
+<div id="loading">
+    <div class="spinner"></div>
+    <div>Carregando dados...</div>
+</div>
+
+<div id="map-info">
+    <span id="info-text">Arraste e zoom o mapa para explorar</span>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<script>
+// ─── Globals ─────────────────────────────────────────────────────────────────
+let map, markerCluster, heatLayer;
+let currentView = 'markers';
+let currentData = [];
+let globalStats = null;
+let isLoading = false;
+
+// Selection state
+let selectMode = false;
+let selectionRect = null;
+let selectionBounds = null;  // {sw_lat, sw_lon, ne_lat, ne_lon}
+let isDragging = false;
+let dragStart = null;
+let tempRect = null;
+
+// ─── Init map ────────────────────────────────────────────────────────────────
+map = L.map('map').setView([-23.55, -46.63], 11);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+}).addTo(map);
+
+markerCluster = L.markerClusterGroup({
+    maxClusterRadius: 50,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    chunkedLoading: true
+});
+map.addLayer(markerCluster);
+
+// ─── Selection mode ──────────────────────────────────────────────────────────
+function toggleSelectMode() {
+    selectMode = !selectMode;
+    const btn = document.getElementById('btn-select');
+    btn.classList.toggle('active', selectMode);
+    btn.textContent = selectMode ? '✋ Clique e arraste no mapa' : '✋ Selecionar Área';
+
+    if (selectMode) {
+        map.dragging.disable();
+        map.doubleClickZoom.disable();
+        document.getElementById('map').style.cursor = 'crosshair';
+    } else {
+        map.dragging.enable();
+        map.doubleClickZoom.enable();
+        document.getElementById('map').style.cursor = '';
+    }
+}
+
+function clearSelection() {
+    if (selectionRect) { map.removeLayer(selectionRect); selectionRect = null; }
+    selectionBounds = null;
+    document.getElementById('btn-clear-sel').style.display = 'none';
+    document.getElementById('general-stats').style.display = '';
+    document.getElementById('area-stats').classList.remove('visible');
+
+    // Re-enable normal map interaction if select mode was on
+    if (selectMode) toggleSelectMode();
+
+    // Reload data without selection
+    loadData();
+}
+
+// Mouse events for rectangle selection
+map.on('mousedown', function(e) {
+    if (!selectMode) return;
+    isDragging = true;
+    dragStart = e.latlng;
+    if (tempRect) { map.removeLayer(tempRect); tempRect = null; }
+});
+
+map.on('mousemove', function(e) {
+    if (!isDragging || !selectMode) return;
+    if (tempRect) map.removeLayer(tempRect);
+    const bounds = L.latLngBounds(dragStart, e.latlng);
+    tempRect = L.rectangle(bounds, {
+        color: '#d90429',
+        weight: 2,
+        dashArray: '8 4',
+        fillColor: 'rgba(217, 4, 41, 0.08)',
+        fillOpacity: 1
+    }).addTo(map);
+});
+
+map.on('mouseup', function(e) {
+    if (!isDragging || !selectMode) return;
+    isDragging = false;
+
+    if (tempRect) map.removeLayer(tempRect);
+    tempRect = null;
+
+    if (!dragStart) return;
+    const bounds = L.latLngBounds(dragStart, e.latlng);
+
+    // Only accept selections with some minimum size
+    if (bounds.getNorthEast().distanceTo(bounds.getSouthWest()) < 100) {
+        return;
+    }
+
+    // Remove previous selection
+    if (selectionRect) map.removeLayer(selectionRect);
+
+    // Draw final selection rectangle
+    selectionRect = L.rectangle(bounds, {
+        color: '#d90429',
+        weight: 2,
+        dashArray: '8 4',
+        fillColor: 'rgba(217, 4, 41, 0.08)',
+        fillOpacity: 1
+    }).addTo(map);
+
+    selectionBounds = {
+        sw_lat: bounds.getSouthWest().lat,
+        sw_lon: bounds.getSouthWest().lng,
+        ne_lat: bounds.getNorthEast().lat,
+        ne_lon: bounds.getNorthEast().lng
+    };
+
+    // Exit select mode
+    toggleSelectMode();
+
+    document.getElementById('btn-clear-sel').style.display = '';
+
+    // Load area stats
+    loadAreaStats();
+    loadData();
+});
+
+// ─── Marker helpers ──────────────────────────────────────────────────────────
+function createCircleMarker(lat, lon) {
+    return L.circleMarker([lat, lon], {
+        radius: 5,
+        fillColor: '#ef476f',
+        color: '#ef476f',
+        weight: 1,
+        opacity: 0.8,
+        fillOpacity: 0.6
+    });
+}
+
+function formatPopup(item) {
+    return `
+        <div class="popup-field"><strong>Data:</strong> ${item.data_ocorrencia_bo || '-'} ${item.hora_ocorrencia || ''}</div>
+        <div class="popup-field"><strong>Local:</strong> ${item.logradouro || '-'}, ${item.bairro || '-'}</div>
+        <div class="popup-field"><strong>Cidade:</strong> ${item.cidade || '-'}</div>
+        <div class="popup-field"><strong>Período:</strong> ${item.descr_periodo || '-'}</div>
+        <div class="popup-field"><strong>Status:</strong> ${item.flag_status || '-'}</div>
+        <div class="popup-field"><strong>Tipo Local:</strong> ${item.descr_tipolocal || '-'}</div>
+        <div class="popup-field"><strong>Marca:</strong> ${item.marca_objeto || '-'}</div>
+    `;
+}
+
+// ─── Load filters ────────────────────────────────────────────────────────────
+async function loadFilters() {
+    try {
+        const resp = await fetch('/api/stats');
+        const data = await resp.json();
+        fillSelect('filter-cidade', data.by_cidade.map(c => c.cidade));
+        fillSelect('filter-periodo', data.by_periodo.map(p => p.descr_periodo));
+        
+        // Preencher anos
+        const anoSel = document.getElementById('filter-ano');
+        data.anos.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a;
+            opt.textContent = a;
+            anoSel.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Error loading filters:', e);
+    }
+}
+
+function fillSelect(id, values) {
+    const sel = document.getElementById(id);
+    values.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        sel.appendChild(opt);
+    });
+}
+
+async function loadBairros() {
+    const cidade = document.getElementById('filter-cidade').value;
+    const sel = document.getElementById('filter-bairro');
+    sel.innerHTML = '<option value="">Todos</option>';
+    if (!cidade) return;
+    try {
+        const resp = await fetch(`/api/filters/bairros?cidade=${encodeURIComponent(cidade)}`);
+        const data = await resp.json();
+        data.bairros.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Error loading bairros:', e);
+    }
+}
+
+// ─── General Stats ───────────────────────────────────────────────────────────
+async function loadStats() {
+    try {
+        const params = getFilterParams();
+        const qs = new URLSearchParams(params).toString();
+        const resp = await fetch(`/api/stats?${qs}`);
+        globalStats = await resp.json();
+        document.getElementById('stat-total').textContent = globalStats.total.toLocaleString('pt-BR');
+        renderCharts();
+    } catch (e) {
+        console.error('Error loading stats:', e);
+    }
+}
+
+const COLORS = ['#ef476f','#ff6b35','#ffc43d','#06d6a0','#4361ee','#8338ec','#fb5607','#3a86ff'];
+
+function renderBarChart(containerId, items, labelKey, countKey, colors) {
+    const el = document.getElementById(containerId);
+    const max = items[0]?.[countKey] || 1;
+    el.innerHTML = '';
+    items.forEach((item, i) => {
+        const pct = (item[countKey] / max * 100).toFixed(0);
+        const label = item[labelKey];
+        const count = item[countKey];
+        const color = colors ? colors[label] || COLORS[i % COLORS.length] : COLORS[i % COLORS.length];
+        el.innerHTML += `
+            <div class="bar-row">
+                <span class="bar-label" title="${label}">${label}</span>
+                <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+                <span class="bar-count">${count >= 1000 ? (count/1000).toFixed(1)+'k' : count}</span>
+            </div>`;
+    });
+}
+
+function renderCharts() {
+    if (!globalStats) return;
+
+    // Cidade chart
+    const cidadeData = globalStats.by_cidade.map(c => ({
+        ...c,
+        cidade: c.cidade.replace(/^S\./, 'São ').replace(/^S /, 'São ')
+    }));
+    renderBarChart('chart-cidade', cidadeData, 'cidade', 'count');
+
+    // Periodo chart
+    const periodoColors = {
+        'A noite': '#1a1a2e', 'Pela manhã': '#ffc43d',
+        'A tarde': '#ff6b35', 'De madrugada': '#4361ee', 'Em hora incerta': '#888'
+    };
+    renderBarChart('chart-periodo', globalStats.by_periodo, 'descr_periodo', 'count', periodoColors);
+
+    // Tipo local chart
+    renderBarChart('chart-tipolocal', globalStats.by_tipolocal, 'descr_tipolocal', 'count');
+}
+
+// ─── Area Stats ──────────────────────────────────────────────────────────────
+async function loadAreaStats() {
+    if (!selectionBounds) return;
+
+    const sel = `${selectionBounds.sw_lat},${selectionBounds.sw_lon},${selectionBounds.ne_lat},${selectionBounds.ne_lon}`;
+    const params = { selection: sel, ...getFilterParams() };
+    const qs = new URLSearchParams(params).toString();
+
+    try {
+        const resp = await fetch(`/api/stats/area?${qs}`);
+        const stats = await resp.json();
+
+        // Show area stats, hide general
+        document.getElementById('general-stats').style.display = 'none';
+        document.getElementById('area-stats').classList.add('visible');
+
+        // Total
+        document.getElementById('area-stat-total').textContent = stats.total.toLocaleString('pt-BR');
+
+        // Flagrante
+        const flagranteCount = stats.by_flagrante?.com_flagrante || 0;
+        document.getElementById('area-stat-flagrante').textContent = flagranteCount.toLocaleString('pt-BR');
+
+        // Periodo chart
+        const periodoColors = {
+            'A noite': '#1a1a2e', 'Pela manhã': '#ffc43d',
+            'A tarde': '#ff6b35', 'De madrugada': '#4361ee', 'Em hora incerta': '#888'
+        };
+        renderBarChart('area-chart-periodo', stats.by_periodo, 'descr_periodo', 'count', periodoColors);
+
+        // Month chart
+        const monthNames = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const monthData = stats.by_month.map(m => ({ mes_nome: monthNames[m.mes] || m.mes, count: m.count }));
+        renderBarChart('area-chart-month', monthData, 'mes_nome', 'count');
+
+        // Tipo local chart
+        renderBarChart('area-chart-tipolocal', stats.by_tipolocal, 'descr_tipolocal', 'count');
+
+        // Marca chart
+        renderBarChart('area-chart-marca', stats.by_marca, 'marca_objeto', 'count');
+
+        // Bairro chart
+        renderBarChart('area-chart-bairro', stats.by_bairro, 'bairro', 'count');
+
+        // Hotspots
+        const hotspotsEl = document.getElementById('area-hotspots');
+        hotspotsEl.innerHTML = '';
+        if (stats.hotspots && stats.hotspots.length > 0) {
+            stats.hotspots.forEach((hs, i) => {
+                // Truncate long rua names
+                const ruas = hs.ruas ? hs.ruas.split(',').slice(0, 3).join(', ') : '-';
+                hotspotsEl.innerHTML += `
+                    <div class="hotspot-item">
+                        <div class="hotspot-rank">${i + 1}</div>
+                        <div class="hotspot-info">
+                            <div class="hotspot-rua" title="${hs.ruas}">${ruas}</div>
+                            <div class="hotspot-count">${hs.count} ocorrências</div>
+                        </div>
+                    </div>`;
+            });
+        } else {
+            hotspotsEl.innerHTML = '<div style="font-size:11px;color:#888;padding:4px 0">Nenhum ponto crítico encontrado</div>';
+        }
+    } catch (e) {
+        console.error('Error loading area stats:', e);
+    }
+}
+
+// ─── Data loading ────────────────────────────────────────────────────────────
+function getFilterParams() {
+    const params = {};
+    const cidade = document.getElementById('filter-cidade').value;
+    const bairro = document.getElementById('filter-bairro').value;
+    const periodo = document.getElementById('filter-periodo').value;
+    const ano = document.getElementById('filter-ano').value;
+    const dataInicio = document.getElementById('filter-data-inicio').value;
+    const dataFim = document.getElementById('filter-data-fim').value;
+    if (cidade) params.cidade = cidade;
+    if (bairro) params.bairro = bairro;
+    if (periodo) params.periodo = periodo;
+    if (ano) params.ano = ano;
+    if (dataInicio) params.data_inicio = dataInicio;
+    if (dataFim) params.data_fim = dataFim;
+    console.log('Filter params:', params);
+    return params;
+}
+
+async function loadCount() {
+    const bounds = map.getBounds();
+    const b = `${bounds.getSouthWest().lat},${bounds.getSouthWest().lng},${bounds.getNorthEast().lat},${bounds.getNorthEast().lng}`;
+    const params = { bounds: b, ...getFilterParams() };
+    const qs = new URLSearchParams(params).toString();
+    try {
+        const resp = await fetch(`/api/crimes/count?${qs}`);
+        const data = await resp.json();
+        document.getElementById('stat-visible').textContent = data.total.toLocaleString('pt-BR');
+        return data.total;
+    } catch (e) {
+        console.error('Error loading count:', e);
+        return 0;
+    }
+}
+
+async function loadData() {
+    console.log('loadData() chamado');
+    if (isLoading) return;
+    isLoading = true;
+    showLoading(true);
+
+    // If there's a selection, use that as the bounding box for data
+    const bounds = selectionBounds || (function() {
+        const b = map.getBounds();
+        return { sw_lat: b.getSouthWest().lat, sw_lon: b.getSouthWest().lng,
+                 ne_lat: b.getNorthEast().lat, ne_lon: b.getNorthEast().lng };
+    })();
+
+    const b = `${bounds.sw_lat},${bounds.sw_lon},${bounds.ne_lat},${bounds.ne_lon}`;
+    const zoom = map.getZoom();
+
+    try {
+        const count = await loadCount();
+
+        if (currentView === 'heatmap' || (currentView === 'markers' && (zoom < 12 || count > 20000))) {
+            await loadHeatmapData(b);
+        } else {
+            await loadMarkerData(b, count);
+        }
+
+        const areaLabel = selectionBounds ? 'na área selecionada' : 'na área visível';
+        document.getElementById('info-text').textContent =
+            `${count.toLocaleString('pt-BR')} roubos ${areaLabel}` +
+            (currentView === 'markers' && count > 20000 ? ' (mostrando 20k)' : '');
+    } catch (e) {
+        console.error('Error loading data:', e);
+    }
+
+    showLoading(false);
+    isLoading = false;
+}
+
+async function loadMarkerData(bounds, count) {
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+
+    const params = { bounds: bounds, limit: '20000', ...getFilterParams() };
+    const qs = new URLSearchParams(params).toString();
+    console.log('Chamando /api/crimes com:', qs);
+    const resp = await fetch(`/api/crimes?${qs}`);
+    currentData = await resp.json();
+    console.log('Dados recebidos:', currentData.length, 'itens');
+
+    markerCluster.clearLayers();
+    const markers = [];
+    currentData.forEach(item => {
+        if (item.latitude && item.longitude) {
+            const marker = createCircleMarker(item.latitude, item.longitude);
+            marker.bindPopup(formatPopup(item));
+            markers.push(marker);
+        }
+    });
+    markerCluster.addLayers(markers);
+}
+
+async function loadHeatmapData(bounds) {
+    markerCluster.clearLayers();
+    if (heatLayer) { map.removeLayer(heatLayer); }
+
+    const zoom = map.getZoom();
+    let precision = 2;
+    if (zoom >= 12) precision = 3;
+    if (zoom >= 14) precision = 4;
+
+    const params = { bounds: bounds, precision: precision, ...getFilterParams() };
+    const qs = new URLSearchParams(params).toString();
+    const resp = await fetch(`/api/crimes/heatmap?${qs}`);
+    const heatData = await resp.json();
+
+    const points = heatData.map(d => [d.lat, d.lon, d.count]);
+    heatLayer = L.heatLayer(points, {
+        radius: 15,
+        blur: 20,
+        maxZoom: 15,
+        max: Math.max(...heatData.map(d => d.count), 1),
+        gradient: {
+            0.2: '#ffc43d',
+            0.4: '#ff6b35',
+            0.6: '#ef476f',
+            0.8: '#d90429',
+            1.0: '#6a040f'
+        }
+    }).addTo(map);
+}
+
+function setView(view) {
+    currentView = view;
+    document.getElementById('btn-markers').classList.toggle('active', view === 'markers');
+    document.getElementById('btn-heatmap').classList.toggle('active', view === 'heatmap');
+    markerCluster.clearLayers();
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+    loadData();
+}
+
+// ─── Filter actions ──────────────────────────────────────────────────────────
+function updateDatesForYear() {
+    const ano = document.getElementById('filter-ano').value;
+    const dataInicio = document.getElementById('filter-data-inicio');
+    const dataFim = document.getElementById('filter-data-fim');
+    
+    if (ano) {
+        dataInicio.value = `${ano}-01-01`;
+        dataFim.value = `${ano}-12-31`;
+    } else {
+        // Se não selecionou ano, usa o período completo
+        dataInicio.value = '2023-01-01';
+        dataFim.value = '2025-12-31';
+    }
+}
+
+function applyFilters() {
+    console.log('applyFilters() chamado');
+    console.log('Ano selecionado:', document.getElementById('filter-ano').value);
+    loadData();
+    loadStats();  // Atualizar estatísticas gerais também
+    if (selectionBounds) loadAreaStats();
+}
+
+function clearFilters() {
+    document.getElementById('filter-cidade').value = '';
+    document.getElementById('filter-bairro').value = '';
+    document.getElementById('filter-bairro').innerHTML = '<option value="">Todos</option>';
+    document.getElementById('filter-periodo').value = '';
+    document.getElementById('filter-ano').value = '';
+    document.getElementById('filter-data-inicio').value = '2023-01-01';
+    document.getElementById('filter-data-fim').value = '2025-12-31';
+    loadData();
+    if (selectionBounds) loadAreaStats();
+}
+
+// ─── Sidebar toggle ──────────────────────────────────────────────────────────
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const btn = document.getElementById('toggle-btn');
+    sidebar.classList.toggle('collapsed');
+    btn.classList.toggle('open');
+    btn.classList.toggle('closed');
+}
+
+// ─── Loading ─────────────────────────────────────────────────────────────────
+function showLoading(show) {
+    document.getElementById('loading').classList.toggle('show', show);
+}
+
+// ─── Map events ──────────────────────────────────────────────────────────────
+let moveTimeout;
+map.on('moveend', () => {
+    // Don't auto-reload if there's a selection (user may just be panning)
+    if (selectionBounds) return;
+    clearTimeout(moveTimeout);
+    moveTimeout = setTimeout(loadData, 400);
+});
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+loadFilters();
+loadStats();
+loadData();
+</script>
+
+</body>
+</html>
