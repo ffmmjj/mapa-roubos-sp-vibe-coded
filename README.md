@@ -2,14 +2,14 @@
 
 Dashboard interativo para visualização de dados de roubo de celulares no estado de São Paulo, com filtros por ano, cidade, bairro, período e seleção de área no mapa.
 
-## Dados
+## 📊 Dados
 
 - **Período**: 2023 a 2025
 - **Total de roubos**: 507.159
 - **Com coordenadas**: 498.001 (98,2%)
 - **Municípios**: Vários do estado de São Paulo
 
-## Funcionalidades
+## ✨ Funcionalidades
 
 - 📍 Mapa interativo com clustering e heatmap
 - 📊 Estatísticas gerais e por área selecionada
@@ -17,28 +17,57 @@ Dashboard interativo para visualização de dados de roubo de celulares no estad
 - ✋ Seleção retangular de áreas com estatísticas
 - 📈 Gráficos por período, mês, tipo local, marcas
 
-## Instalação
+## 🚀 Início Rápido
 
-### Pré-requisitos
+### Opção 1: Docker (Recomendado)
 
+```bash
+# Clonar o repositório
+git clone <seu-repositorio>
+cd mapa-crimes
+
+# Executar com docker-compose (o banco já está incluído na imagem)
+docker-compose up -d
+
+# Acessar: http://localhost:8000
+```
+
+**Comandos úteis:**
+```bash
+# Ver logs
+docker-compose logs -f
+
+# Parar
+docker-compose down
+
+# Reconstruir imagem (apenas se alterar código)
+docker-compose up -d --build
+
+# Entrar no container
+docker-compose exec web bash
+```
+
+### Opção 2: Instalação Manual
+
+#### Pré-requisitos
 - Python 3.10+
 - pip
 
-### Passos
+#### Passos
 
 1. Clone o repositório
-2. Instale as dependências:
+2. Execute o setup:
+   ```bash
+   ./setup.sh
+   ```
+   Ou manualmente:
    ```bash
    cd backend
    pip install -r requirements.txt
-   ```
-
-3. Descompacte o banco de dados:
-   ```bash
    gunzip crimes.db.gz
    ```
 
-4. Inicie o servidor:
+3. Inicie o servidor:
    ```bash
    ./start.sh
    ```
@@ -48,9 +77,9 @@ Dashboard interativo para visualização de dados de roubo de celulares no estad
    python3 main.py
    ```
 
-5. Acesse: http://localhost:8000
+4. Acesse: http://localhost:8000
 
-## Estrutura do Projeto
+## 📁 Estrutura do Projeto
 
 ```
 mapa-crimes/
@@ -65,11 +94,14 @@ mapa-crimes/
 │   └── crimes.db.gz            # Banco de dados comprimido (45MB)
 ├── frontend/
 │   └── index.html              # Interface do usuário
+├── Dockerfile                  # Imagem Docker
+├── docker-compose.yml          # Compose Docker
+├── setup.sh                    # Script de setup
 ├── start.sh                    # Script de inicialização
 └── README.md                   # Este arquivo
 ```
 
-## API Endpoints
+## 🔌 API Endpoints
 
 | Endpoint | Descrição |
 |----------|-----------|
@@ -80,7 +112,7 @@ mapa-crimes/
 | `GET /api/stats` | Estatísticas gerais |
 | `GET /api/stats/area` | Estatísticas de área selecionada |
 
-## Parâmetros de Filtro
+## 🔍 Parâmetros de Filtro
 
 - `bounds`: Coordenadas do mapa (sw_lat,sw_lon,ne_lat,ne_lon)
 - `cidade`: Filtro por cidade
@@ -90,9 +122,16 @@ mapa-crimes/
 - `data_inicio`: Data inicial (YYYY-MM-DD)
 - `data_fim`: Data final (YYYY-MM-DD)
 
-## Adicionar Novos Dados
+## ➕ Adicionar Novos Dados
 
-Para adicionar novos anos de dados:
+### Via Docker
+
+```bash
+# Coloque o arquivo .xlsx na raiz do projeto
+docker-compose run --rm importer python3 import_additional.py /data/CelularesSubtraidos_XXXX.xlsx
+```
+
+### Via Instalação Manual
 
 1. Coloque o arquivo `.xlsx` na raiz do projeto
 2. Execute:
@@ -111,23 +150,68 @@ Para adicionar novos anos de dados:
    gzip crimes.db
    ```
 
-## Geocoding
+## 🗺️ Geocoding
 
 O projeto usa um sistema de duas etapas para geocodificar registros sem coordenadas:
 
 1. **Cross-reference**: Busca endereços similares no próprio banco (gratuito)
 2. **Mapbox API**: Para os registros restantes (requer token gratuito)
 
-Para usar o Mapbox:
+### Usando o Mapbox
+
 ```bash
 export MAPBOX_ACCESS_TOKEN="seu_token_aqui"
 python3 geocode_mapbox.py
 ```
 
-## Fonte dos Dados
+Para obter um token gratuito: https://www.mapbox.com/
+
+## 🐛 Troubleshooting
+
+### Docker
+
+**Porta 8000 já em uso:**
+```bash
+# Altere a porta no docker-compose.yml
+ports:
+  - "8001:8000"
+```
+
+**Erro ao descomprimir crimes.db:**
+```bash
+# Descomprimir manualmente
+gunzip backend/crimes.db.gz
+```
+
+### Instalação Manual
+
+**Erro de dependências:**
+```bash
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+```
+
+**Erro ao iniciar servidor:**
+```bash
+# Verificar se crimes.db existe
+ls -la backend/crimes.db
+
+# Se não existir, descomprimir:
+gunzip backend/crimes.db.gz
+```
+
+## 📄 Fonte dos Dados
 
 Dados públicos do governo do estado de São Paulo sobre roubo de celulares.
 
-## Licença
+## 📝 Licença
 
 Este projeto é para fins educacionais e de análise de dados públicos.
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou pull requests.
+
+## 📞 Suporte
+
+Se encontrar problemas, abra uma issue no repositório.
